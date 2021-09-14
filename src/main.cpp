@@ -48,7 +48,7 @@ uint8_t gHue = 0;                  // rotating "base color" used by many of the 
 
 
 bool modeChanged = false;
-bool automaticChange = false;
+bool automaticChange = true;
 bool changeBrightness = false;
 bool incBrightness = true;
 uint8_t brightness = 50;
