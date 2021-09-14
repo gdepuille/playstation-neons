@@ -18,6 +18,7 @@
 #define NUM_LEDS (TRIANGLE + ROND + CROIX + CARRE)
 
 #define FRAMES_PER_SECOND 120
+#define TIME_TO_SLEEP_MS 3600 // 1 Heure
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
@@ -35,6 +36,7 @@ void bpm();
 
 void nextPattern();
 void toggleAuto();
+void multiClick();
 void startChangeBrightness();
 void stopChangeBrightness();
 void modifyBrightness();
@@ -51,7 +53,9 @@ bool modeChanged = false;
 bool automaticChange = true;
 bool changeBrightness = false;
 bool incBrightness = true;
+bool enabled = true;
 uint8_t brightness = 50;
+uint32_t elapsedRuntime = 0;
 CRGB leds[NUM_LEDS];
 
 OneButton button = OneButton(BTN, true, true); // Low level + internal pullup
@@ -71,6 +75,7 @@ void setup()
 #endif
   button.attachClick(nextPattern);
   button.attachDoubleClick(toggleAuto);
+  button.attachMultiClick(multiClick);
   button.attachLongPressStart(startChangeBrightness);
   button.attachLongPressStop(stopChangeBrightness);
 
@@ -87,7 +92,7 @@ void loop()
   button.tick();
 
   unsigned long delay = 1000 / FRAMES_PER_SECOND;
-  if (modeChanged) {
+  if (enabled && modeChanged) {
     for (int i = 0 ; i < NUM_LEDS ; i++) {
       if (automaticChange) {
         leds[i] = CRGB(0, 255, 0);
@@ -97,9 +102,14 @@ void loop()
     }
     modeChanged = false;
     delay = 5000;
-  } else {
+  
+  } else if (enabled && !modeChanged) {
     // Call the current pattern function once, updating the 'leds' array
     gPatterns[gCurrentPatternNumber]();
+  
+  } else if (!enabled) {
+    fadeToBlackBy(leds, NUM_LEDS, 20);
+    elapsedRuntime = 0;
   }
 
   FastLED.show(); // send the 'leds' array out to the actual LED strip
@@ -116,6 +126,22 @@ void loop()
       modifyBrightness();
     }
   }
+  EVERY_N_SECONDS(5) {
+    // increment time
+    if (enabled) {
+      elapsedRuntime += 5;
+    }
+
+#ifdef DEBUG
+    Serial.println("Auto stop : ");
+    Serial.print(" -> Elapsed (s)   : ");Serial.println(elapsedRuntime);
+    Serial.print(" -> Stop time (s) : ");Serial.println(TIME_TO_SLEEP_MS);
+#endif
+
+    if (elapsedRuntime > TIME_TO_SLEEP_MS) {
+      enabled = false;
+    }
+  }
   EVERY_N_SECONDS(30) { 
     // change patterns periodically if in automatic mode
     if (automaticChange) {
@@ -126,6 +152,11 @@ void loop()
 
 // -------------------------------------------------- //
 void nextPattern() {
+  if (!enabled) {
+    enabled = true;
+    return;
+  }
+
 #ifdef DEBUG
   Serial.println("Click -> Pattern change");
 #endif
@@ -140,6 +171,11 @@ void nextPattern() {
 }
 
 void toggleAuto() {
+  if (!enabled) {
+    enabled = true;
+    return;
+  }
+
 #ifdef DEBUG
   Serial.println("Doubleclick -> Pattern automatic change");
 #endif
@@ -152,7 +188,35 @@ void toggleAuto() {
 #endif
 }
 
+void multiClick() {
+  if (!enabled) {
+    enabled = true;
+    return;
+  }
+
+  int nbClick = button.getNumberClicks();
+#ifdef DEBUG
+  Serial.print("Multiclick -> Pattern multiclick = ");
+  Serial.println(nbClick);
+#endif
+
+  if (nbClick == 3) {
+    enabled = false;
+#ifdef DEBUG
+  Serial.println(" * Extinction");
+#endif
+  } else {
+#ifdef DEBUG
+  Serial.println(" * Inconnu !!");
+#endif
+  }
+}
+
 void startChangeBrightness() {
+  if (!enabled) {
+    return;
+  }
+
 #ifdef DEBUG
   Serial.println("Longpress start -> Brightness change");
 #endif
@@ -161,6 +225,9 @@ void startChangeBrightness() {
 }
 
 void stopChangeBrightness() {
+  if (!enabled) {
+    return;
+  }
 #ifdef DEBUG
   Serial.println("Longpress stop -> Brightness change");
 #endif
@@ -170,6 +237,10 @@ void stopChangeBrightness() {
 }
 
 void modifyBrightness() {
+  if (!enabled) {
+    return;
+  }
+
   if (incBrightness && brightness <= 250) {
     brightness += 5;
   } else if (!incBrightness && brightness >= 10) {
