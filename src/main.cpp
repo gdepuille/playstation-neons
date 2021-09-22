@@ -147,7 +147,7 @@ void loop()
 
   EVERY_N_SECONDS(30) { 
     // change patterns periodically if in automatic mode
-    if (automaticChange) {
+    if (enabled && automaticChange) {
       nextPattern(); 
     }
   } 
