@@ -18,7 +18,7 @@
 #define NUM_LEDS (TRIANGLE + ROND + CROIX + CARRE)
 
 #define FRAMES_PER_SECOND 120
-#define TIME_TO_SLEEP_MS 3600 // 1 Heure
+#define TIME_TO_SLEEP_MINUTE 60 // 1 Heure
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
@@ -55,7 +55,7 @@ bool changeBrightness = false;
 bool incBrightness = true;
 bool enabled = true;
 uint8_t brightness = 50;
-uint32_t elapsedRuntime = 0;
+uint8_t elapsedRuntime = 0;
 CRGB leds[NUM_LEDS];
 
 OneButton button = OneButton(BTN, true, true); // Low level + internal pullup
@@ -120,28 +120,31 @@ void loop()
      // slowly cycle the "base color" through the rainbow
     gHue++; 
   }
+
   EVERY_N_MILLISECONDS(100) {
     // change the brightness
     if (changeBrightness) {
       modifyBrightness();
     }
   }
-  EVERY_N_SECONDS(5) {
+
+  EVERY_N_MINUTES(1) {
     // increment time
     if (enabled) {
-      elapsedRuntime += 5;
+      elapsedRuntime++;
     }
 
 #ifdef DEBUG
     Serial.println("Auto stop : ");
-    Serial.print(" -> Elapsed (s)   : ");Serial.println(elapsedRuntime);
-    Serial.print(" -> Stop time (s) : ");Serial.println(TIME_TO_SLEEP_MS);
+    Serial.print(" -> Elapsed (min)   : ");Serial.println(elapsedRuntime);
+    Serial.print(" -> Stop time (min) : ");Serial.println(TIME_TO_SLEEP_MINUTE);
 #endif
 
-    if (elapsedRuntime > TIME_TO_SLEEP_MS) {
+    if (elapsedRuntime >= TIME_TO_SLEEP_MINUTE) {
       enabled = false;
     }
   }
+
   EVERY_N_SECONDS(30) { 
     // change patterns periodically if in automatic mode
     if (automaticChange) {
